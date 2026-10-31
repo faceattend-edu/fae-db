@@ -1,0 +1,207 @@
+# =========================================================================
+# Migraciones Liquibase + bootstrap de roles de servicio contra Neon Cloud
+# =========================================================================
+# Uso:
+#   docker compose --env-file .env.prod -f docker-compose.neon.yml up --abort-on-container-exit
+# =========================================================================
+
+name: fae-db-neon
+
+x-liquibase: &liquibase-base
+  image: liquibase/liquibase:4.29@sha256:6b21520ff52651f8c30aa9a1d5e1953ff44cd525fa2ef438a293684ec992fa3a
+  environment:
+    DB_USER: ${DB_USER:?DB_USER is required}
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    IDENTITY_SERVICE_PASSWORD: ${IDENTITY_SERVICE_PASSWORD:?IDENTITY_SERVICE_PASSWORD is required}
+    AUTHORIZATION_SERVICE_PASSWORD: ${AUTHORIZATION_SERVICE_PASSWORD:?AUTHORIZATION_SERVICE_PASSWORD is required}
+    ACADEMIC_SERVICE_PASSWORD: ${ACADEMIC_SERVICE_PASSWORD:?ACADEMIC_SERVICE_PASSWORD is required}
+    SCHEDULING_SERVICE_PASSWORD: ${SCHEDULING_SERVICE_PASSWORD:?SCHEDULING_SERVICE_PASSWORD is required}
+    ATTENDANCE_SERVICE_PASSWORD: ${ATTENDANCE_SERVICE_PASSWORD:?ATTENDANCE_SERVICE_PASSWORD is required}
+    BIOMETRIC_SERVICE_PASSWORD: ${BIOMETRIC_SERVICE_PASSWORD:?BIOMETRIC_SERVICE_PASSWORD is required}
+    CONFIGURATION_SERVICE_PASSWORD: ${CONFIGURATION_SERVICE_PASSWORD:?CONFIGURATION_SERVICE_PASSWORD is required}
+    NOTIFICATION_SERVICE_PASSWORD: ${NOTIFICATION_SERVICE_PASSWORD:?NOTIFICATION_SERVICE_PASSWORD is required}
+  restart: "no"
+
+services:
+
+  identity-liquibase:
+    <<: *liquibase-base
+    container_name: fae-identity-liquibase
+    volumes:
+      - ./01-ms-identity-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST:?DB_HOST is required}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  authorization-liquibase:
+    <<: *liquibase-base
+    container_name: fae-authorization-liquibase
+    depends_on:
+      identity-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./02-ms-authorization-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  academic-liquibase:
+    <<: *liquibase-base
+    container_name: fae-academic-liquibase
+    depends_on:
+      identity-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./03-ms-academic-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  scheduling-liquibase:
+    <<: *liquibase-base
+    container_name: fae-scheduling-liquibase
+    depends_on:
+      academic-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./04-ms-scheduling-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  attendance-liquibase:
+    <<: *liquibase-base
+    container_name: fae-attendance-liquibase
+    depends_on:
+      scheduling-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./05-ms-attendance-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  biometric-liquibase:
+    <<: *liquibase-base
+    container_name: fae-biometric-liquibase
+    depends_on:
+      identity-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./06-ms-biometric-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  configuration-liquibase:
+    <<: *liquibase-base
+    container_name: fae-configuration-liquibase
+    depends_on:
+      academic-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./07-ms-configuration-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  notification-liquibase:
+    <<: *liquibase-base
+    container_name: fae-notification-liquibase
+    depends_on:
+      academic-liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./08-ms-notification-db:/liquibase/changelog:ro
+    command: >
+      --searchPath=/liquibase/changelog
+      --changelog-file=db.changelog-master.yaml
+      --url=jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME:-neondb}?sslmode=${DB_SSLMODE:-require}&channelBinding=${DB_CHANNEL_BINDING:-require}
+      --username=${DB_USER}
+      --password=${DB_PASSWORD}
+      --liquibaseSchemaName=public
+      --log-level=INFO
+      update
+
+  db-service-logins:
+    image: postgres:17.2@sha256:deec5ebe0bb0fbbe8be39b25a3d5ab03647b96b01ef5470a0f982ba2cef59ca4
+    container_name: fae-db-service-logins
+    depends_on:
+      identity-liquibase:
+        condition: service_completed_successfully
+      authorization-liquibase:
+        condition: service_completed_successfully
+      academic-liquibase:
+        condition: service_completed_successfully
+      scheduling-liquibase:
+        condition: service_completed_successfully
+      attendance-liquibase:
+        condition: service_completed_successfully
+      biometric-liquibase:
+        condition: service_completed_successfully
+      configuration-liquibase:
+        condition: service_completed_successfully
+      notification-liquibase:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: ${DB_HOST}
+      PGPORT: ${DB_PORT:-5432}
+      PGDATABASE: ${DB_NAME:-neondb}
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGSSLMODE: ${DB_SSLMODE:-require}
+      PGCHANNELBINDING: ${DB_CHANNEL_BINDING:-require}
+      IDENTITY_SERVICE_PASSWORD: ${IDENTITY_SERVICE_PASSWORD}
+      AUTHORIZATION_SERVICE_PASSWORD: ${AUTHORIZATION_SERVICE_PASSWORD}
+      ACADEMIC_SERVICE_PASSWORD: ${ACADEMIC_SERVICE_PASSWORD}
+      SCHEDULING_SERVICE_PASSWORD: ${SCHEDULING_SERVICE_PASSWORD}
+      ATTENDANCE_SERVICE_PASSWORD: ${ATTENDANCE_SERVICE_PASSWORD}
+      BIOMETRIC_SERVICE_PASSWORD: ${BIOMETRIC_SERVICE_PASSWORD}
+      CONFIGURATION_SERVICE_PASSWORD: ${CONFIGURATION_SERVICE_PASSWORD}
+      NOTIFICATION_SERVICE_PASSWORD: ${NOTIFICATION_SERVICE_PASSWORD}
+    volumes:
+      - ./scripts/create-service-logins.sh:/usr/local/bin/create-service-logins.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/create-service-logins.sh"]
+    restart: "no"

@@ -1,0 +1,11 @@
+# Entorno: cada repo tiene su .env local; solo la plantilla se versiona
+.env
+.env.*
+!.env.example
+
+# IDE y logs
+.vscode/
+.idea/
+*.log
+*.swp
+*.tmp
